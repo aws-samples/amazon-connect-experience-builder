@@ -1,0 +1,1333 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Amazon Connect Experience Builder
+
+Parameters:
+    S3BucketName:
+        Type: String
+        Description: "The S3 Bucket containing the deployment package (multiple .zip)"
+    EmailAddress:
+        Type: String
+        Description: "Email address for the frontend user account"
+
+Resources:
+    UsersDDBTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+            AttributeDefinitions:
+                - AttributeName: apiKey
+                  AttributeType: S
+            KeySchema:
+                - AttributeName: apiKey
+                  KeyType: HASH
+            ProvisionedThroughput:
+                ReadCapacityUnits: 1
+                WriteCapacityUnits: 1
+
+    # S3 bucket policy
+    FrontEndS3BucketPolicy:
+        Type: AWS::S3::BucketPolicy
+        Properties:
+            Bucket: !Ref FrontEndS3Bucket
+            PolicyDocument:
+                Version: "2008-10-17"
+                Id: "PolicyForCloudFrontPrivateContent"
+                Statement:
+                    - Action:
+                          - "s3:GetObject"
+                      Effect: Allow
+                      Resource: !Join ["", [!GetAtt FrontEndS3Bucket.Arn, "/*"]]
+                      Principal:
+                          CanonicalUser: !GetAtt [CDNOriginIdentity, S3CanonicalUserId]
+    # S3 buckets
+    FrontEndS3Bucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            PublicAccessBlockConfiguration:
+                BlockPublicAcls: true
+                BlockPublicPolicy: true
+                IgnorePublicAcls: true
+                RestrictPublicBuckets: true
+            LoggingConfiguration:
+                DestinationBucketName: !Ref LoggingS3Bucket
+                LogFilePrefix: "frontend-logs/"
+
+    LoggingS3Bucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            PublicAccessBlockConfiguration:
+                BlockPublicAcls: true
+                BlockPublicPolicy: true
+                IgnorePublicAcls: true
+                RestrictPublicBuckets: true
+
+    # Lambda layer
+    LambdaAWSLayer:
+        Type: AWS::Lambda::LayerVersion
+        Properties:
+            CompatibleArchitectures:
+                - x86_64
+            CompatibleRuntimes:
+                - nodejs14.x
+                - nodejs16.x
+            Content:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "nodejs.zip"
+            LayerName: aws-2-1-1152-0-layer
+
+    # Lambda role
+    LambdaRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    - Effect: Allow
+                      Principal:
+                          Service: lambda.amazonaws.com
+                      Action: sts:AssumeRole
+            ManagedPolicyArns:
+                - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+            Policies:
+                - PolicyName: InlineConnectPolicy
+                  PolicyDocument:
+                      Version: "2012-10-17"
+                      Statement:
+                          - Effect: Allow
+                            Action:
+                                - connect:ListInstances
+                                - connect:ListInstanceAttributes
+                                - connect:ListPhoneNumbers
+                                - connect:ListPhoneNumbersV2
+                                - connect:ListQueues
+                                - connect:SearchQueues
+                                - connect:ClaimPhoneNumber
+                                - connect:SearchAvailablePhoneNumbers
+                                - connect:CreateContactFlow
+                                - connect:CreateContactFlowModule
+                                - connect:CreateHoursOfOperation
+                                - connect:CreateQueue
+                                - connect:AssociatePhoneNumberContactFlow
+                                - ds:DescribeDirectories
+                            Resource: "*"
+                - PolicyName: InlineStatesPolicy
+                  PolicyDocument:
+                      Version: "2012-10-17"
+                      Statement:
+                          - Effect: Allow
+                            Action:
+                                - states:StartExecution
+                                - states:DescribeExecution
+                            Resource: "*"
+                - PolicyName: InlineDDBPolicy
+                  PolicyDocument:
+                      Version: "2012-10-17"
+                      Statement:
+                          - Effect: Allow
+                            Action:
+                                - dynamodb:GetItem
+                            Resource:
+                                - !GetAtt UsersDDBTable.Arn
+
+    # State machine role
+    StatesExecutionRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    - Effect: "Allow"
+                      Principal:
+                          Service: !Sub "states.${AWS::Region}.amazonaws.com"
+                      Action: "sts:AssumeRole"
+            Path: "/"
+            Policies:
+                - PolicyName: StatesExecutionPolicy
+                  PolicyDocument:
+                      Version: "2012-10-17"
+                      Statement:
+                          - Effect: Allow
+                            Action:
+                                - "lambda:InvokeFunction"
+                            Resource: "*"
+
+    ###### LAMBDAS ######
+    LambdaAuthenticate:
+        Type: AWS::Lambda::Function
+        Properties:
+            Description: "Authenticate frontend users"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 12
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "authenticate.zip"
+            Environment:
+                Variables:
+                    TABLE: !Ref UsersDDBTable
+
+    LambdaAuthorize:
+        Type: AWS::Lambda::Function
+        Properties:
+            Description: "Authorize API calls"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 12
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "authorizer.zip"
+            Environment:
+                Variables:
+                    TABLE: !Ref UsersDDBTable
+                    API:
+                        !Join [
+                            "",
+                            [
+                                "arn:",
+                                !Ref AWS::Partition,
+                                ":execute-api:",
+                                !Ref AWS::Region,
+                                ":",
+                                !Ref AWS::AccountId,
+                                ":",
+                                !Ref ApiGateway,
+                            ],
+                        ]
+
+    LambdaListConnectInstances:
+        Type: AWS::Lambda::Function
+        DependsOn:
+            - LambdaAWSLayer
+        Properties:
+            Description: "List connect instances in region for account"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 12
+            Layers:
+                - !Ref LambdaAWSLayer
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "list-instances.zip"
+
+    LambdaStartStateMachine:
+        Type: AWS::Lambda::Function
+        DependsOn:
+            - LambdaAWSLayer
+        Properties:
+            Description: "Initiate the orchestration"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 12
+            Layers:
+                - !Ref LambdaAWSLayer
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "start-state-machine.zip"
+            Environment:
+                Variables:
+                    STATE_MACHINE_ARN: !Ref ExperienceStateMachine
+
+    LambdaListPhoneNumbers:
+        Type: AWS::Lambda::Function
+        DependsOn:
+            - LambdaAWSLayer
+        Properties:
+            Description: "List phone numbers available to an instance"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 20
+            Layers:
+                - !Ref LambdaAWSLayer
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "list-phone-numbers.zip"
+
+    LambdaGetInstanceResources:
+        Type: AWS::Lambda::Function
+        DependsOn:
+            - LambdaAWSLayer
+        Properties:
+            Description: "List relevant instance resources"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 20
+            Layers:
+                - !Ref LambdaAWSLayer
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "list-resources.zip"
+
+    LambdaExperienceProgress:
+        Type: AWS::Lambda::Function
+        DependsOn:
+            - LambdaAWSLayer
+        Properties:
+            Description: "Retrieve the progress of a creation state machine"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 20
+            Layers:
+                - !Ref LambdaAWSLayer
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "progress.zip"
+
+    LambdaCreateQueues:
+        Type: AWS::Lambda::Function
+        DependsOn:
+            - LambdaAWSLayer
+        Properties:
+            Description: "Create queues in the instance"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 60
+            Layers:
+                - !Ref LambdaAWSLayer
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "create-queues.zip"
+
+    LambdaCreateHoursOfOperation:
+        Type: AWS::Lambda::Function
+        DependsOn:
+            - LambdaAWSLayer
+        Properties:
+            Description: "Create the hours of operation in instance"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 60
+            Layers:
+                - !Ref LambdaAWSLayer
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "create-hours-of-operation.zip"
+
+    LambdaCreateContactFlows:
+        Type: AWS::Lambda::Function
+        DependsOn:
+            - LambdaAWSLayer
+        Properties:
+            Description: "Create the contact flows in instance"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 300
+            Layers:
+                - !Ref LambdaAWSLayer
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "create-contact-flows.zip"
+
+    LambdaClaimNumber:
+        Type: AWS::Lambda::Function
+        DependsOn:
+            - LambdaAWSLayer
+        Properties:
+            Description: "Claim a number and associates it with a contact flow"
+            Handler: index.handler
+            Runtime: nodejs16.x
+            Role: !GetAtt LambdaRole.Arn
+            Timeout: 12
+            Layers:
+                - !Ref LambdaAWSLayer
+            Code:
+                S3Bucket: !Ref S3BucketName
+                S3Key: "claim-number.zip"
+
+    # State Machine
+    ExperienceStateMachine:
+        Type: AWS::StepFunctions::StateMachine
+        Properties:
+            DefinitionS3Location:
+                Bucket: !Ref S3BucketName
+                Key: state-machine.asl.json
+            RoleArn: !GetAtt StatesExecutionRole.Arn
+            DefinitionSubstitutions:
+                createHoursOfOperation: !GetAtt LambdaCreateHoursOfOperation.Arn
+                createQueues: !GetAtt LambdaCreateQueues.Arn
+                createContactFlows: !GetAtt LambdaCreateContactFlows.Arn
+                claimPhoneNumber: !GetAtt LambdaClaimNumber.Arn
+
+    # API Gateway
+    ApiGateway:
+        Type: AWS::ApiGateway::RestApi
+        Properties:
+            Name: !Sub "${AWS::StackName}-ceb-api"
+
+    Authorizer:
+        Type: "AWS::ApiGateway::Authorizer"
+        Properties:
+            AuthorizerResultTtlInSeconds: "300"
+            AuthorizerUri:
+                !Join [
+                    "",
+                    [
+                        "arn:aws:apigateway:",
+                        !Ref "AWS::Region",
+                        ":lambda:path/2015-03-31/functions/",
+                        !GetAtt LambdaAuthorize.Arn,
+                        "/invocations",
+                    ],
+                ]
+            Type: REQUEST
+            IdentitySource: method.request.header.Authorization
+            Name: DefaultAuthorizer
+            RestApiId: !Ref ApiGateway
+
+    # API Deployment
+    ApiDeployment:
+        Type: AWS::ApiGateway::Deployment
+        DependsOn:
+            - ApiAuthOptionsMethod
+            - ApiAuthPostMethod
+            - ApiExperienceOptionsMethod
+            - ApiExperiencePutMethod
+            - ApiExperiencePostMethod
+            - ApiHelloOptionsMethod
+            - ApiHelloGetMethod
+            - ApiInstancesOptionsMethod
+            - ApiInstancesGetMethod
+            - ApiPhoneNumbersOptionsMethod
+            - ApiPhoneNumbersPostMethod
+            - ApiResourcesOptionsMethod
+            - ApiResourcesPostMethod
+        Properties:
+            RestApiId: !Ref ApiGateway
+            StageName: "DummyStage"
+
+    # API Stage
+    ApiStage:
+        Type: AWS::ApiGateway::Stage
+        DependsOn:
+            - ApiGateway
+        Properties:
+            RestApiId: !Ref ApiGateway
+            StageName: dev
+            DeploymentId: !Ref ApiDeployment
+            MethodSettings:
+                - DataTraceEnabled: true
+                  HttpMethod: "*"
+                  LoggingLevel: "ERROR"
+                  ResourcePath: "/*"
+
+    ###### API RESOURCES AND METHODS ######
+    ApiAuthResource:
+        Type: AWS::ApiGateway::Resource
+        Properties:
+            RestApiId: !Ref ApiGateway
+            ParentId: !GetAtt ApiGateway.RootResourceId
+            PathPart: "auth"
+
+    ApiAuthPostMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: "NONE"
+            HttpMethod: "POST"
+            ResourceId: !Ref ApiAuthResource
+            RestApiId: !Ref ApiGateway
+            Integration:
+                Type: "AWS_PROXY"
+                IntegrationHttpMethod: "POST"
+                Uri:
+                    !Join [
+                        "",
+                        [
+                            "arn:aws:apigateway:",
+                            !Ref AWS::Region,
+                            ":lambda:path/2015-03-31/functions/",
+                            !GetAtt LambdaAuthenticate.Arn,
+                            "/invocations",
+                        ],
+                    ]
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiAuthOptionsMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: NONE
+            RestApiId: !Ref ApiGateway
+            ResourceId: !Ref ApiAuthResource
+            HttpMethod: OPTIONS
+            Integration:
+                IntegrationResponses:
+                    - StatusCode: 200
+                      ResponseParameters:
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Methods: "'PUT,POST,GET,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                      ResponseTemplates:
+                          application/json: ""
+                PassthroughBehavior: WHEN_NO_MATCH
+                RequestTemplates:
+                    application/json: '{"statusCode": 200}'
+                Type: MOCK
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiExperienceResource:
+        Type: AWS::ApiGateway::Resource
+        Properties:
+            RestApiId: !Ref ApiGateway
+            ParentId: !GetAtt ApiGateway.RootResourceId
+            PathPart: "experience"
+
+    ApiExperiencePutMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !GetAtt Authorizer.AuthorizerId
+            HttpMethod: "PUT"
+            ResourceId: !Ref ApiExperienceResource
+            RestApiId: !Ref ApiGateway
+            Integration:
+                Type: "AWS_PROXY"
+                IntegrationHttpMethod: "POST"
+                Uri:
+                    !Join [
+                        "",
+                        [
+                            "arn:aws:apigateway:",
+                            !Ref AWS::Region,
+                            ":lambda:path/2015-03-31/functions/",
+                            !GetAtt LambdaStartStateMachine.Arn,
+                            "/invocations",
+                        ],
+                    ]
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiExperiencePostMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !GetAtt Authorizer.AuthorizerId
+            HttpMethod: "POST"
+            ResourceId: !Ref ApiExperienceResource
+            RestApiId: !Ref ApiGateway
+            Integration:
+                Type: "AWS_PROXY"
+                IntegrationHttpMethod: "POST"
+                Uri:
+                    !Join [
+                        "",
+                        [
+                            "arn:aws:apigateway:",
+                            !Ref AWS::Region,
+                            ":lambda:path/2015-03-31/functions/",
+                            !GetAtt LambdaExperienceProgress.Arn,
+                            "/invocations",
+                        ],
+                    ]
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiExperienceOptionsMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: NONE
+            RestApiId: !Ref ApiGateway
+            ResourceId: !Ref ApiExperienceResource
+            HttpMethod: OPTIONS
+            Integration:
+                IntegrationResponses:
+                    - StatusCode: 200
+                      ResponseParameters:
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Methods: "'PUT,POST,GET,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                      ResponseTemplates:
+                          application/json: ""
+                PassthroughBehavior: WHEN_NO_MATCH
+                RequestTemplates:
+                    application/json: '{"statusCode": 200}'
+                Type: MOCK
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiHelloResource:
+        Type: AWS::ApiGateway::Resource
+        Properties:
+            RestApiId: !Ref ApiGateway
+            ParentId: !GetAtt ApiGateway.RootResourceId
+            PathPart: "hello"
+
+    ApiHelloGetMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: "NONE"
+            HttpMethod: "GET"
+            ResourceId: !Ref ApiHelloResource
+            RestApiId: !Ref ApiGateway
+            Integration:
+                IntegrationResponses:
+                    - StatusCode: 200
+                      ResponseParameters:
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                      ResponseTemplates:
+                          application/json: ""
+                PassthroughBehavior: WHEN_NO_MATCH
+                RequestTemplates:
+                    application/json: '{"statusCode": 200}'
+                Type: MOCK
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiInstancesOptionsMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: NONE
+            RestApiId: !Ref ApiGateway
+            ResourceId: !Ref ApiInstancesResource
+            HttpMethod: OPTIONS
+            Integration:
+                IntegrationResponses:
+                    - StatusCode: 200
+                      ResponseParameters:
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                      ResponseTemplates:
+                          application/json: ""
+                PassthroughBehavior: WHEN_NO_MATCH
+                RequestTemplates:
+                    application/json: '{"statusCode": 200}'
+                Type: MOCK
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiInstancesResource:
+        Type: AWS::ApiGateway::Resource
+        Properties:
+            RestApiId: !Ref ApiGateway
+            ParentId: !GetAtt ApiGateway.RootResourceId
+            PathPart: "instances"
+
+    ApiInstancesGetMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !GetAtt Authorizer.AuthorizerId
+            HttpMethod: "GET"
+            ResourceId: !Ref ApiInstancesResource
+            RestApiId: !Ref ApiGateway
+            Integration:
+                Type: "AWS_PROXY"
+                IntegrationHttpMethod: "POST"
+                Uri:
+                    !Join [
+                        "",
+                        [
+                            "arn:aws:apigateway:",
+                            !Ref AWS::Region,
+                            ":lambda:path/2015-03-31/functions/",
+                            !GetAtt LambdaListConnectInstances.Arn,
+                            "/invocations",
+                        ],
+                    ]
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiHelloOptionsMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: NONE
+            RestApiId: !Ref ApiGateway
+            ResourceId: !Ref ApiHelloResource
+            HttpMethod: OPTIONS
+            Integration:
+                IntegrationResponses:
+                    - StatusCode: 200
+                      ResponseParameters:
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                      ResponseTemplates:
+                          application/json: ""
+                PassthroughBehavior: WHEN_NO_MATCH
+                RequestTemplates:
+                    application/json: '{"statusCode": 200}'
+                Type: MOCK
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiPhoneNumbersResource:
+        Type: AWS::ApiGateway::Resource
+        Properties:
+            RestApiId: !Ref ApiGateway
+            ParentId: !GetAtt ApiGateway.RootResourceId
+            PathPart: "phone-numbers"
+
+    ApiPhoneNumbersPostMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !GetAtt Authorizer.AuthorizerId
+            HttpMethod: "POST"
+            ResourceId: !Ref ApiPhoneNumbersResource
+            RestApiId: !Ref ApiGateway
+            Integration:
+                Type: "AWS_PROXY"
+                IntegrationHttpMethod: "POST"
+                Uri:
+                    !Join [
+                        "",
+                        [
+                            "arn:aws:apigateway:",
+                            !Ref AWS::Region,
+                            ":lambda:path/2015-03-31/functions/",
+                            !GetAtt LambdaListPhoneNumbers.Arn,
+                            "/invocations",
+                        ],
+                    ]
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiPhoneNumbersOptionsMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: NONE
+            RestApiId: !Ref ApiGateway
+            ResourceId: !Ref ApiPhoneNumbersResource
+            HttpMethod: OPTIONS
+            Integration:
+                IntegrationResponses:
+                    - StatusCode: 200
+                      ResponseParameters:
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Methods: "'PUT,POST,GET,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                      ResponseTemplates:
+                          application/json: ""
+                PassthroughBehavior: WHEN_NO_MATCH
+                RequestTemplates:
+                    application/json: '{"statusCode": 200}'
+                Type: MOCK
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiResourcesResource:
+        Type: AWS::ApiGateway::Resource
+        Properties:
+            RestApiId: !Ref ApiGateway
+            ParentId: !GetAtt ApiGateway.RootResourceId
+            PathPart: "resources"
+
+    ApiResourcesPostMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: "CUSTOM"
+            AuthorizerId: !GetAtt Authorizer.AuthorizerId
+            HttpMethod: "POST"
+            ResourceId: !Ref ApiResourcesResource
+            RestApiId: !Ref ApiGateway
+            Integration:
+                Type: "AWS_PROXY"
+                IntegrationHttpMethod: "POST"
+                Uri:
+                    !Join [
+                        "",
+                        [
+                            "arn:aws:apigateway:",
+                            !Ref AWS::Region,
+                            ":lambda:path/2015-03-31/functions/",
+                            !GetAtt LambdaGetInstanceResources.Arn,
+                            "/invocations",
+                        ],
+                    ]
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    ApiResourcesOptionsMethod:
+        Type: AWS::ApiGateway::Method
+        Properties:
+            AuthorizationType: NONE
+            RestApiId: !Ref ApiGateway
+            ResourceId: !Ref ApiResourcesResource
+            HttpMethod: OPTIONS
+            Integration:
+                IntegrationResponses:
+                    - StatusCode: 200
+                      ResponseParameters:
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Methods: "'PUT,POST,GET,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                      ResponseTemplates:
+                          application/json: ""
+                PassthroughBehavior: WHEN_NO_MATCH
+                RequestTemplates:
+                    application/json: '{"statusCode": 200}'
+                Type: MOCK
+            MethodResponses:
+                - StatusCode: 200
+                  ResponseModels:
+                      application/json: "Empty"
+                  ResponseParameters:
+                      method.response.header.Access-Control-Allow-Headers: false
+                      method.response.header.Access-Control-Allow-Methods: false
+                      method.response.header.Access-Control-Allow-Origin: false
+
+    # API Lambda Permission
+    LambdaApiPermissionAuthorize:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: "lambda:invokeFunction"
+            FunctionName: !GetAtt LambdaAuthorize.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn:
+                !Join [
+                    "",
+                    ["arn:aws:execute-api:", !Ref AWS::Region, ":", !Ref AWS::AccountId, ":", !Ref ApiGateway, "/*"],
+                ]
+
+    LambdaApiPermissionResourcesPost:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: "lambda:invokeFunction"
+            FunctionName: !GetAtt LambdaGetInstanceResources.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn:
+                !Join [
+                    "",
+                    ["arn:aws:execute-api:", !Ref AWS::Region, ":", !Ref AWS::AccountId, ":", !Ref ApiGateway, "/*"],
+                ]
+
+    LambdaApiPermissionAuthenticatePost:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: "lambda:invokeFunction"
+            FunctionName: !GetAtt LambdaAuthenticate.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn:
+                !Join [
+                    "",
+                    ["arn:aws:execute-api:", !Ref AWS::Region, ":", !Ref AWS::AccountId, ":", !Ref ApiGateway, "/*"],
+                ]
+
+    LambdaApiPermissionPhoneNumbersPost:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: "lambda:invokeFunction"
+            FunctionName: !GetAtt LambdaListPhoneNumbers.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn:
+                !Join [
+                    "",
+                    ["arn:aws:execute-api:", !Ref AWS::Region, ":", !Ref AWS::AccountId, ":", !Ref ApiGateway, "/*"],
+                ]
+
+    LambdaApiPermissionInstancesGet:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: "lambda:invokeFunction"
+            FunctionName: !GetAtt LambdaListConnectInstances.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn:
+                !Join [
+                    "",
+                    ["arn:aws:execute-api:", !Ref AWS::Region, ":", !Ref AWS::AccountId, ":", !Ref ApiGateway, "/*"],
+                ]
+
+    LambdaApiPermissionExperiencePost:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: "lambda:invokeFunction"
+            FunctionName: !GetAtt LambdaExperienceProgress.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn:
+                !Join [
+                    "",
+                    ["arn:aws:execute-api:", !Ref AWS::Region, ":", !Ref AWS::AccountId, ":", !Ref ApiGateway, "/*"],
+                ]
+
+    LambdaApiPermissionExperiencePut:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: "lambda:invokeFunction"
+            FunctionName: !GetAtt LambdaStartStateMachine.Arn
+            Principal: "apigateway.amazonaws.com"
+            SourceArn:
+                !Join [
+                    "",
+                    ["arn:aws:execute-api:", !Ref AWS::Region, ":", !Ref AWS::AccountId, ":", !Ref ApiGateway, "/*"],
+                ]
+
+    # CDN Origin Identity
+    CDNOriginIdentity:
+        Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+        Properties:
+            CloudFrontOriginAccessIdentityConfig:
+                Comment: !Sub "Cloudfront Origin identity"
+
+    CustomCachePolicy:
+        Type: AWS::CloudFront::CachePolicy
+        Properties:
+            CachePolicyConfig:
+                Comment: String
+                DefaultTTL: 3600
+                MaxTTL: 86400
+                MinTTL: 500
+                Name: !Sub "CustomCachePolicy_${AWS::StackName}"
+                ParametersInCacheKeyAndForwardedToOrigin:
+                    CookiesConfig:
+                        CookieBehavior: none
+                    EnableAcceptEncodingBrotli: true
+                    EnableAcceptEncodingGzip: true
+                    HeadersConfig:
+                        HeaderBehavior: whitelist
+                        Headers:
+                            - Authorization
+                    QueryStringsConfig:
+                        QueryStringBehavior: none
+
+    CustomOriginRequestPolicy:
+        Type: AWS::CloudFront::OriginRequestPolicy
+        Properties:
+            OriginRequestPolicyConfig:
+                Name: !Sub "CustomOriginRequestPolicy_${AWS::StackName}"
+                CookiesConfig:
+                    CookieBehavior: all
+                HeadersConfig:
+                    HeaderBehavior: none
+                QueryStringsConfig:
+                    QueryStringBehavior: all
+
+    # CDN distribution
+    CloudFrontDistribution:
+        Type: "AWS::CloudFront::Distribution"
+        Properties:
+            DistributionConfig:
+                Logging:
+                    Bucket: !GetAtt LoggingS3Bucket.DomainName
+                    Prefix: "distribution/"
+                CustomErrorResponses:
+                    - ErrorCode: 404
+                      ResponseCode: 200
+                      ResponsePagePath: "/index.html"
+                    - ErrorCode: 403
+                      ResponseCode: 200
+                      ResponsePagePath: "/index.html"
+                DefaultCacheBehavior:
+                    CachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+                    AllowedMethods:
+                        - GET
+                        - HEAD
+                        - OPTIONS
+                    ForwardedValues:
+                        Cookies:
+                            Forward: none
+                        QueryString: false
+                    TargetOriginId: !Sub "S3-origin-${FrontEndS3Bucket}"
+                    ViewerProtocolPolicy: redirect-to-https
+                DefaultRootObject: index.html
+                Enabled: True
+                HttpVersion: http2
+                Origins:
+                    - DomainName: !GetAtt FrontEndS3Bucket.RegionalDomainName
+                      Id: !Sub "S3-origin-${FrontEndS3Bucket}"
+                      S3OriginConfig:
+                          OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CDNOriginIdentity}"
+                    - DomainName: !Sub "${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com"
+                      Id: !Sub "API-origin-${ApiGateway}"
+                      CustomOriginConfig:
+                          OriginSSLProtocols:
+                              - "TLSv1.2"
+                          OriginProtocolPolicy: https-only
+                CacheBehaviors:
+                    - TargetOriginId: !Sub "API-origin-${ApiGateway}"
+                      CachePolicyId: !Ref CustomCachePolicy
+                      Compress: true
+                      PathPattern: "dev/*"
+                      ViewerProtocolPolicy: "redirect-to-https"
+                      OriginRequestPolicyId: !Ref CustomOriginRequestPolicy
+                      AllowedMethods:
+                          - HEAD
+                          - DELETE
+                          - POST
+                          - GET
+                          - OPTIONS
+                          - PUT
+                          - PATCH
+                PriceClass: PriceClass_All
+
+    S3CustomResource:
+        Type: Custom::S3CustomResource
+        Properties:
+            ServiceToken: !GetAtt CustomResourceLambdaFunction.Arn
+            SourceBucket: !Ref S3BucketName
+            DestinationBucket: !Ref FrontEndS3Bucket
+    CustomResourceLambdaFunction:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Handler: index.handler
+            Role: !GetAtt CustomResourceLambdaExecutionRole.Arn
+            Timeout: 360
+            Runtime: nodejs16.x
+            Code:
+                ZipFile: |
+                    const AWS = require("aws-sdk");
+                    var response = require('cfn-response');
+                    const s3 = new AWS.S3();
+
+                    exports.handler = (event, context) => {
+
+                        const request = event.RequestType;
+
+                        switch (request) {
+                            case "Create":
+                                var params = {
+                                    Bucket: event.ResourceProperties.SourceBucket,
+                                    Prefix: "frontend"
+                                }
+                                getBucketContent(params).then((data) => {
+
+                                        copyObjects(data).then((data) => {
+                                                console.log("Object copied successfully");
+                                                response.send(event, context, response.SUCCESS, {});
+                                            })
+                                            .catch((e) => {
+                                                console.log(e);
+                                                response.send(event, context, response.FAILED, {});
+                                            })
+                                    })
+                                    .catch(e => {
+                                        console.log(e);
+                                    })
+
+                                break;
+                            case "Update":
+                                var params = {
+                                    Bucket: event.ResourceProperties.SourceBucket,
+                                    Prefix: "frontend"
+                                }
+                                getBucketContent(params).then((data) => {
+
+                                        copyObjects(data).then((data) => {
+                                                console.log("Object copied successfully");
+                                                response.send(event, context, response.SUCCESS, {});
+                                            })
+                                            .catch((e) => {
+                                                console.log(e);
+                                                response.send(event, context, response.FAILED, {});
+                                            })
+                                    })
+                                    .catch(e => {
+                                        console.log(e);
+                                        response.send(event, context, response.FAILED, {});
+                                    })
+
+                                break;
+                            case "Delete":
+                                var params = {
+                                    Bucket: event.ResourceProperties.DestinationBucket,
+                                    Prefix: ""
+                                }
+                                getBucketContent(params).then((data) => {
+
+                                        deleteObjects(data).then((data) => {
+                                                console.log("Objects deleted successfully");
+                                                response.send(event, context, response.SUCCESS, {});
+                                            })
+                                            .catch((e) => {
+                                                console.log(e);
+                                                response.send(event, context, response.FAILED, {});
+                                            })
+                                    })
+                                    .catch(e => {
+                                        console.log(e);
+                                        response.send(event, context, response.FAILED, {});
+                                    })
+
+                                break;
+                            default:
+                                console.log("Unsupported operation.");
+                                response.send(event, context, response.FAILED, {});
+                                console.log("Sending FAILED from default");
+                        }
+
+                        function getBucketContent(params) {
+                            return new Promise(async (res, rej) => {
+                                try {
+                                    const list = await s3.listObjectsV2(params).promise();
+
+                                    console.log("1. Listed content");
+                                    res(list);
+                                }
+                                catch (e) {
+                                    rej(e);
+                                }
+
+                            });
+                        }
+
+                        function copyObjects(data) {
+                            return new Promise(async (res, rej) => {
+                                for (let index in data.Contents) {
+                                    var params = {
+                                        Bucket: event.ResourceProperties.DestinationBucket,
+                                        CopySource: event.ResourceProperties.SourceBucket + "/" + data.Contents[index].Key,
+                                        Key: data.Contents[index].Key.replace("frontend/", "")
+                                    }
+
+                                    try {
+                                        const res = await s3.copyObject(params).promise();
+                                    }
+                                    catch (e) {
+                                        rej(e);
+                                    }
+                                }
+                                console.log("1. Finished copying");
+
+                                res(true);
+                            });
+                        }
+
+                        function deleteObjects(data) {
+                            return new Promise(async (res, rej) => {
+                                for (let index in data.Contents) {
+                                    var params = {
+                                        Bucket: event.ResourceProperties.DestinationBucket,
+                                        Key: data.Contents[index].Key
+                                    }
+
+                                    try {
+                                        console.log(params);
+                                        const res = await s3.deleteObject(params).promise();
+                                        console.log(res)
+                                    }
+                                    catch (e) {
+                                        rej(e);
+                                    }
+                                }
+                                console.log("1. Finished deleting");
+
+                                res(true);
+                            });
+                        }
+                    };
+
+    CustomResourceLambdaExecutionRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Statement:
+                    - Action:
+                          - sts:AssumeRole
+                      Effect: Allow
+                      Principal:
+                          Service:
+                              - lambda.amazonaws.com
+                Version: "2012-10-17"
+            Path: "/"
+            Policies:
+                - PolicyDocument:
+                      Statement:
+                          - Action:
+                                - logs:CreateLogGroup
+                                - logs:CreateLogStream
+                                - logs:PutLogEvents
+                            Effect: Allow
+                            Resource: arn:aws:logs:*:*:*
+                      Version: "2012-10-17"
+                  PolicyName: !Sub ${AWS::StackName}-CustomResource-CW
+                - PolicyDocument:
+                      Statement:
+                          - Action:
+                                - s3:DeleteObject
+                                - s3:List*
+                                - s3:GetObject
+                                - s3:PutObject
+                            Effect: Allow
+                            Resource:
+                                - !Sub arn:aws:s3:::${S3BucketName}/*
+                                - !Sub arn:aws:s3:::${S3BucketName}
+                                - !Sub arn:aws:s3:::${FrontEndS3Bucket}/*
+                                - !Sub arn:aws:s3:::${FrontEndS3Bucket}
+                      Version: "2012-10-17"
+                  PolicyName: !Sub ${AWS::StackName}-CustomResourceLambda-S3
+
+    DDBCustomResource:
+        Type: Custom::S3CustomResource
+        Properties:
+            ServiceToken: !GetAtt CustomResourceDDBLambdaFunction.Arn
+            EmailAddress: !Ref EmailAddress
+            UsersTable: !Ref UsersDDBTable
+
+    CustomResourceDDBLambdaFunction:
+        Type: "AWS::Lambda::Function"
+        Properties:
+            Handler: index.handler
+            Role: !GetAtt CustomResourceDDBLambdaExecutionRole.Arn
+            Timeout: 10
+            Runtime: nodejs16.x
+            Environment:
+                Variables:
+                    TABLE: !Ref UsersDDBTable
+            Code:
+                ZipFile: |
+                    var response = require('cfn-response');
+                    const AWS = require('aws-sdk');
+                    const ddb = new AWS.DynamoDB();
+
+                    String.prototype.hashCode = function() {
+                        var hash = 0,
+                            i, chr;
+                        if (this.length === 0) return hash;
+                        for (i = 0; i < this.length; i++) {
+                            chr = this.charCodeAt(i);
+                            hash = ((hash << 5) - hash) + chr;
+                            hash |= 0; // Convert to 32bit integer
+                        }
+                        return Math.abs(hash);
+                    }
+
+                    exports.handler = (event, context) => {
+                        const email = event.ResourceProperties.EmailAddress;
+                        const apiKey = (email + Date.now()).hashCode();
+
+                        const request = event.RequestType;
+
+                        if (request == "Create" || request == "Update") {
+                            let params = {
+                                TableName: process.env.TABLE,
+                                Item: {
+                                    'email': { S: email },
+                                    'apiKey': { S: apiKey.toString() }
+                                }
+                            }
+
+                            ddb.putItem(params, function(err, data) {
+                                if (err) {
+                                    response.send(event, context, response.FAILED, {});
+                                } else {
+                                    response.send(event, context, response.SUCCESS, { "ApiKey": apiKey.toString() });
+                                }
+                            });        
+                        } else {
+                            response.send(event, context, response.SUCCESS, {});
+                        }
+                    };
+
+    CustomResourceDDBLambdaExecutionRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Statement:
+                    - Action:
+                          - sts:AssumeRole
+                      Effect: Allow
+                      Principal:
+                          Service:
+                              - lambda.amazonaws.com
+                Version: "2012-10-17"
+            Path: "/"
+            Policies:
+                - PolicyDocument:
+                      Statement:
+                          - Action:
+                                - logs:CreateLogGroup
+                                - logs:CreateLogStream
+                                - logs:PutLogEvents
+                            Effect: Allow
+                            Resource: arn:aws:logs:*:*:*
+                      Version: "2012-10-17"
+                  PolicyName: !Sub ${AWS::StackName}-CRDDBLambda-logs
+                - PolicyDocument:
+                      Statement:
+                          - Action:
+                                - dynamodb:PutItem
+                            Effect: Allow
+                            Resource:
+                                - !GetAtt UsersDDBTable.Arn
+                      Version: "2012-10-17"
+                  PolicyName: !Sub ${AWS::StackName}-CRDDBLambda-ddb
+
+Outputs:
+    WebclientURL:
+        Description: The URL to access the webclient after deployment.
+        Value: !GetAtt CloudFrontDistribution.DomainName
+    ApiKey:
+        Description: The API key that will be required by the frontend to authenticate the user
+        Value: !GetAtt DDBCustomResource.ApiKey

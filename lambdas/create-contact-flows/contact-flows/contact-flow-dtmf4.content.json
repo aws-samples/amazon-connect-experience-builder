@@ -1,0 +1,133 @@
+{
+    "Version": "2019-10-30",
+    "StartAction": "d21dd8dd-adbd-42ab-8c38-b8e9fb4be790",
+    "Metadata": {
+        "entryPointPosition": { "x": 20, "y": 20 },
+        "snapToGrid": false,
+        "ActionMetadata": {
+            "667cd27c-af36-4ae8-9d32-2c3f0399247e": { "position": { "x": 329, "y": 234 }, "parameters": { "ThirdPartyPhoneNumber": { "countryCode": "NZ" } }, "CountryCode": "us" },
+            "28cbeeac-2830-411b-aa1b-59bffc702415": {
+                "position": { "x": 326.9099756690997, "y": 388 },
+                "useDynamic": false
+            },
+            "c6df1d0d-a15e-41aa-b437-07867a87195e": {
+                "position": { "x": 582.9099756690997, "y": 41 },
+                "useDynamic": false
+            },
+            "9ec2348f-f86a-40c2-af54-8e1fa6568f52": { "position": { "x": 849.9099756690997, "y": 242 } },
+            "578c5215-3b4a-4884-af5e-b748700268f6": { "position": { "x": 552, "y": -208.8 } },
+            "d21dd8dd-adbd-42ab-8c38-b8e9fb4be790": {
+                "position": { "x": 327, "y": 34 },
+                "useDynamic": false,
+                "queue": {
+                    "id": "",
+                    "text": "BasicQueue"
+                }
+            },
+            "9a38687b-4cb3-4c33-a11f-e4778e40eec3": {
+                "position": { "x": 810.4000000000001, "y": -303.2 },
+                "conditionMetadata": [
+                    {
+                        "id": "3bf49db1-089d-4a72-8249-e8fd47939ca6",
+                        "operator": { "name": "Equals", "value": "Equals", "shortDisplay": "=" },
+                        "value": "0"
+                    }
+                ]
+            },
+            "b0b2bc57-539a-4928-bd17-e16790dda0df": {
+                "position": { "x": 1117.6000000000001, "y": -302.40000000000003 }
+            }
+        }
+    },
+    "Actions": [
+        {
+            "Identifier": "667cd27c-af36-4ae8-9d32-2c3f0399247e",
+            "Parameters": {
+                "ThirdPartyPhoneNumber": "+1{{phoneNumber}}",
+                "ThirdPartyConnectionTimeLimitSeconds": "30",
+                "ContinueFlowExecution": "False"
+            },
+            "Transitions": {
+                "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52",
+                "Errors": [{ "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferParticipantToThirdParty"
+        },
+        {
+            "Identifier": "28cbeeac-2830-411b-aa1b-59bffc702415",
+            "Parameters": { "Text": "{{message}}" },
+            "Transitions": {
+                "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52",
+                "Errors": [{ "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "MessageParticipant"
+        },
+        {
+            "Parameters": {},
+            "Identifier": "578c5215-3b4a-4884-af5e-b748700268f6",
+            "Type": "GetMetricData",
+            "Transitions": {
+                "NextAction": "9a38687b-4cb3-4c33-a11f-e4778e40eec3",
+                "Errors": [{ "NextAction": "c6df1d0d-a15e-41aa-b437-07867a87195e", "ErrorType": "NoMatchingError" }]
+            }
+        },
+        {
+            "Parameters": {},
+            "Identifier": "c6df1d0d-a15e-41aa-b437-07867a87195e",
+            "Type": "TransferContactToQueue",
+            "Transitions": {
+                "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52",
+                "Errors": [
+                    { "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52", "ErrorType": "QueueAtCapacity" },
+                    { "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52", "ErrorType": "NoMatchingError" }
+                ]
+            }
+        },
+        {
+            "Parameters": { "ComparisonValue": "$.Metrics.Agents.Online.Count" },
+            "Identifier": "9a38687b-4cb3-4c33-a11f-e4778e40eec3",
+            "Type": "Compare",
+            "Transitions": {
+                "NextAction": "c6df1d0d-a15e-41aa-b437-07867a87195e",
+                "Conditions": [
+                    {
+                        "NextAction": "b0b2bc57-539a-4928-bd17-e16790dda0df",
+                        "Condition": { "Operator": "Equals", "Operands": ["0"] }
+                    }
+                ],
+                "Errors": [{ "NextAction": "c6df1d0d-a15e-41aa-b437-07867a87195e", "ErrorType": "NoMatchingCondition" }]
+            }
+        },
+        {
+            "Parameters": {},
+            "Identifier": "9ec2348f-f86a-40c2-af54-8e1fa6568f52",
+            "Type": "DisconnectParticipant",
+            "Transitions": {}
+        },
+        {
+            "Parameters": {
+                "Text": "Due to circumstances outside of our control, we can't answer you at the moment. We apologies for the inconvenience. Please call again later."
+            },
+            "Identifier": "b0b2bc57-539a-4928-bd17-e16790dda0df",
+            "Type": "MessageParticipant",
+            "Transitions": {
+                "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52",
+                "Errors": [{ "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52", "ErrorType": "NoMatchingError" }]
+            }
+        },
+        {
+            "Identifier": "d21dd8dd-adbd-42ab-8c38-b8e9fb4be790",
+            "Parameters": {
+                "QueueId": ""
+            },
+            "Transitions": {
+                "NextAction": "578c5215-3b4a-4884-af5e-b748700268f6",
+                "Errors": [{ "NextAction": "9ec2348f-f86a-40c2-af54-8e1fa6568f52", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "UpdateContactTargetQueue"
+        }
+    ]
+}
