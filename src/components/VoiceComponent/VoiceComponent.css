@@ -1,0 +1,12 @@
+/* // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: MIT-0 */
+
+.voice-container {
+    display: flex;
+    flex-direction: row;
+}
+
+.voice-selector {
+    flex-grow: 1;
+    margin-right: 15px;
+}

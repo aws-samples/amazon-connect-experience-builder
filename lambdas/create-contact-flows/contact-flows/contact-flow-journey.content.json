@@ -1,0 +1,376 @@
+{
+    "Version": "2019-10-30",
+    "StartAction": "c782111c-1b48-4c4c-8249-9ac2afd1acd4",
+    "Metadata": {
+        "entryPointPosition": { "x": 15, "y": 18 },
+        "snapToGrid": false,
+        "ActionMetadata": {
+            "b6567772-54ad-4b37-a551-82a0f1f6e4dc": { "position": { "x": 490, "y": 731 }, "useDynamic": false },
+            "493f535b-3c46-4edd-a717-d8beb47d0fd2": {
+                "position": { "x": 794, "y": 695 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 0"
+                }
+            },
+            "2a90e4b5-39cf-4406-8aa5-67b1d4597a46": {
+                "position": { "x": 1271, "y": 666 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 9"
+                }
+            },
+            "37892e16-f787-4cd8-9b4f-d8bff3e96125": {
+                "position": { "x": 1041, "y": 572 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 8"
+                }
+            },
+            "f2d92c51-b597-4d18-928d-9561d51cca78": {
+                "position": { "x": 819, "y": 487 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 7"
+                }
+            },
+            "5a5d61d6-ce5f-4190-bd39-2a96bef6e063": {
+                "position": { "x": 1279, "y": 415 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 6"
+                }
+            },
+            "cbadb7a6-1230-4ec2-8b52-0e47941a17a0": {
+                "position": { "x": 1046, "y": 340 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 5"
+                }
+            },
+            "6035b99b-3723-478e-b11b-4e5295d1aa38": {
+                "position": { "x": 828, "y": 247 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 4"
+                }
+            },
+            "e2e5e874-e2ed-48f2-96cc-77cc484de567": {
+                "position": { "x": 1279, "y": 181 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 3"
+                }
+            },
+            "a2bc89de-343b-4bbc-a846-d595fd8c5864": {
+                "position": { "x": 832, "y": 15 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 1"
+                }
+            },
+            "c9c8303b-66dc-4e8c-8b27-6e19bce839e5": {
+                "position": { "x": 1057, "y": 70 },
+                "useDynamic": false,
+                "ContactFlow": {
+                    "id": "",
+                    "text": "SEB - DTMF 2"
+                }
+            },
+            "9a46e96e-eb77-40be-94c6-d5341175e79c": { "position": { "x": 1053, "y": 983 }, "useDynamic": false },
+            "9b3ea97f-e64b-456e-acc8-4ea18eb6736a": { "position": { "x": 1352, "y": 1042 } },
+            "7a9759f2-8758-4876-8969-f99d6e6ee69a": { "position": { "x": 119, "y": 917 } },
+            "a8d66bdb-ac7b-459c-8026-202252be9108": { "position": { "x": 108, "y": 681 }, "useDynamic": false },
+            "8477d377-38cf-47a4-89ba-73059a407e1b": {
+                "position": { "x": 234, "y": 246 },
+                "useDynamic": false,
+                "queue": {
+                    "id": "",
+                    "text": "AdditionalBasicQueue"
+                }
+            },
+            "b55aff83-a3d5-4821-ad4b-3dd86fbe6370": { "position": { "x": 235, "y": 454 }, "useDynamic": false },
+            "696c575f-83a9-4102-a47a-3ad147b2ea82": {
+                "position": { "x": 548, "y": 30 },
+                "conditionMetadata": [
+                    { "id": "71f11a03-0997-4490-9119-76f290f7e6e2", "value": "1" },
+                    { "id": "ce0f3932-8da9-405c-88be-83fd80423b1e", "value": "2" },
+                    { "id": "40dd4a73-7f14-4318-b91e-12e26030bbe1", "value": "3" },
+                    { "id": "7c289535-f8d5-4db7-967b-92b486406385", "value": "4" },
+                    { "id": "99f22589-ee91-4eac-a93f-7ceab6c688ef", "value": "5" },
+                    { "id": "f2ce307f-53e6-4a34-9531-472c35074f6a", "value": "6" },
+                    { "id": "b05e7639-1514-47c8-b701-6ac876ef02b7", "value": "7" },
+                    { "id": "0e4b4dcf-04ef-4241-8255-2e577b78df3b", "value": "8" },
+                    { "id": "59cdbef9-97fd-4f22-a267-308ebc1fccfa", "value": "9" },
+                    { "id": "5f1aea5d-5797-4a73-977f-4e2e35803200", "value": "0" }
+                ],
+                "useDynamic": false,
+                "useLexBotDropdown": true,
+                "useDynamicLexBotArn": false
+            },
+            "c782111c-1b48-4c4c-8249-9ac2afd1acd4": { "position": { "x": 183, "y": 32 }, "useDynamic": false }
+        }
+    },
+    "Actions": [
+        {
+            "Identifier": "b6567772-54ad-4b37-a551-82a0f1f6e4dc",
+            "Parameters": { "Text": "Please select a valid option." },
+            "Transitions": {
+                "NextAction": "696c575f-83a9-4102-a47a-3ad147b2ea82",
+                "Errors": [{ "NextAction": "696c575f-83a9-4102-a47a-3ad147b2ea82", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "MessageParticipant"
+        },
+        {
+            "Identifier": "493f535b-3c46-4edd-a717-d8beb47d0fd2",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "2a90e4b5-39cf-4406-8aa5-67b1d4597a46",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "37892e16-f787-4cd8-9b4f-d8bff3e96125",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "f2d92c51-b597-4d18-928d-9561d51cca78",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "5a5d61d6-ce5f-4190-bd39-2a96bef6e063",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "cbadb7a6-1230-4ec2-8b52-0e47941a17a0",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "6035b99b-3723-478e-b11b-4e5295d1aa38",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "e2e5e874-e2ed-48f2-96cc-77cc484de567",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "a2bc89de-343b-4bbc-a846-d595fd8c5864",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "c9c8303b-66dc-4e8c-8b27-6e19bce839e5",
+            "Parameters": {
+                "ContactFlowId": ""
+            },
+            "Transitions": {
+                "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+                "Errors": [{ "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "TransferToFlow"
+        },
+        {
+            "Identifier": "9a46e96e-eb77-40be-94c6-d5341175e79c",
+            "Parameters": { "Text": "Sorry an error occured. Please try again later." },
+            "Transitions": {
+                "NextAction": "9b3ea97f-e64b-456e-acc8-4ea18eb6736a",
+                "Errors": [{ "NextAction": "9b3ea97f-e64b-456e-acc8-4ea18eb6736a", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "MessageParticipant"
+        },
+        {
+            "Identifier": "9b3ea97f-e64b-456e-acc8-4ea18eb6736a",
+            "Type": "DisconnectParticipant",
+            "Parameters": {},
+            "Transitions": {}
+        },
+        {
+            "Identifier": "7a9759f2-8758-4876-8969-f99d6e6ee69a",
+            "Type": "DisconnectParticipant",
+            "Parameters": {},
+            "Transitions": {}
+        },
+        {
+            "Identifier": "a8d66bdb-ac7b-459c-8026-202252be9108",
+            "Parameters": { "Text": "Sorry an error occured. Please try again later." },
+            "Transitions": {
+                "NextAction": "7a9759f2-8758-4876-8969-f99d6e6ee69a",
+                "Errors": [{ "NextAction": "7a9759f2-8758-4876-8969-f99d6e6ee69a", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "MessageParticipant"
+        },
+        {
+            "Identifier": "8477d377-38cf-47a4-89ba-73059a407e1b",
+            "Parameters": {
+                "QueueId": ""
+            },
+            "Transitions": {
+                "NextAction": "b55aff83-a3d5-4821-ad4b-3dd86fbe6370",
+                "Errors": [{ "NextAction": "a8d66bdb-ac7b-459c-8026-202252be9108", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "UpdateContactTargetQueue"
+        },
+        {
+            "Identifier": "b55aff83-a3d5-4821-ad4b-3dd86fbe6370",
+            "Transitions": {
+                "NextAction": "a8d66bdb-ac7b-459c-8026-202252be9108",
+                "Errors": [
+                    { "NextAction": "a8d66bdb-ac7b-459c-8026-202252be9108", "ErrorType": "NoMatchingError" },
+                    { "NextAction": "a8d66bdb-ac7b-459c-8026-202252be9108", "ErrorType": "QueueAtCapacity" }
+                ],
+                "Conditions": []
+            },
+            "Type": "TransferContactToQueue"
+        },
+        {
+            "Identifier": "696c575f-83a9-4102-a47a-3ad147b2ea82",
+            "Parameters": { "Text": "{{menu}}", "StoreInput": "False", "InputTimeLimitSeconds": "5" },
+            "Transitions": {
+                "NextAction": "b6567772-54ad-4b37-a551-82a0f1f6e4dc",
+                "Errors": [
+                    { "NextAction": "9a46e96e-eb77-40be-94c6-d5341175e79c", "ErrorType": "NoMatchingError" },
+                    { "NextAction": "b6567772-54ad-4b37-a551-82a0f1f6e4dc", "ErrorType": "NoMatchingCondition" },
+                    { "NextAction": "b6567772-54ad-4b37-a551-82a0f1f6e4dc", "ErrorType": "InputTimeLimitExceeded" }
+                ],
+                "Conditions": [
+                    {
+                        "NextAction": "a2bc89de-343b-4bbc-a846-d595fd8c5864",
+                        "Condition": { "Operator": "Equals", "Operands": ["1"] }
+                    },
+                    {
+                        "NextAction": "c9c8303b-66dc-4e8c-8b27-6e19bce839e5",
+                        "Condition": { "Operator": "Equals", "Operands": ["2"] }
+                    },
+                    {
+                        "NextAction": "e2e5e874-e2ed-48f2-96cc-77cc484de567",
+                        "Condition": { "Operator": "Equals", "Operands": ["3"] }
+                    },
+                    {
+                        "NextAction": "6035b99b-3723-478e-b11b-4e5295d1aa38",
+                        "Condition": { "Operator": "Equals", "Operands": ["4"] }
+                    },
+                    {
+                        "NextAction": "cbadb7a6-1230-4ec2-8b52-0e47941a17a0",
+                        "Condition": { "Operator": "Equals", "Operands": ["5"] }
+                    },
+                    {
+                        "NextAction": "5a5d61d6-ce5f-4190-bd39-2a96bef6e063",
+                        "Condition": { "Operator": "Equals", "Operands": ["6"] }
+                    },
+                    {
+                        "NextAction": "f2d92c51-b597-4d18-928d-9561d51cca78",
+                        "Condition": { "Operator": "Equals", "Operands": ["7"] }
+                    },
+                    {
+                        "NextAction": "37892e16-f787-4cd8-9b4f-d8bff3e96125",
+                        "Condition": { "Operator": "Equals", "Operands": ["8"] }
+                    },
+                    {
+                        "NextAction": "2a90e4b5-39cf-4406-8aa5-67b1d4597a46",
+                        "Condition": { "Operator": "Equals", "Operands": ["9"] }
+                    },
+                    {
+                        "NextAction": "493f535b-3c46-4edd-a717-d8beb47d0fd2",
+                        "Condition": { "Operator": "Equals", "Operands": ["0"] }
+                    }
+                ]
+            },
+            "Type": "GetParticipantInput"
+        },
+        {
+            "Identifier": "c782111c-1b48-4c4c-8249-9ac2afd1acd4",
+            "Parameters": { "Text": "{{greeting}}" },
+            "Transitions": {
+                "NextAction": "696c575f-83a9-4102-a47a-3ad147b2ea82",
+                "Errors": [{ "NextAction": "696c575f-83a9-4102-a47a-3ad147b2ea82", "ErrorType": "NoMatchingError" }],
+                "Conditions": []
+            },
+            "Type": "MessageParticipant"
+        }
+    ]
+}

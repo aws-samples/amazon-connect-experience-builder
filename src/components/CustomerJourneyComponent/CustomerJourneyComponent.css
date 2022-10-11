@@ -1,0 +1,17 @@
+/* // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: MIT-0 */
+
+.queue-param-container {
+    display: flex;
+    flex-direction: column;
+    margin-top: 15px;
+}
+
+.queue-param-container  p {
+    margin: 0;
+    margin-right: 5px;
+}
+
+.queue-param-container > div {
+    flex-grow: 1;
+}

@@ -1,0 +1,29 @@
+/* // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: MIT-0 */
+
+.time-container > p {
+    margin: 0;
+    align-self: center;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.time-container {
+    display: flex;
+    flex-direction: row;
+}
+
+.day-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 100%;
+}
+
+.grid-container {
+    margin-top: 15px;
+}
+
+.align-end {
+    justify-content: flex-end;
+}
