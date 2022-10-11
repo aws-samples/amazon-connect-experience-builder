@@ -19,7 +19,7 @@ The solution deploys the required resources and operates following this pattern:
 
 Deployment of the solution is performed through AWS Cloudformation. To deploy the solution, follow these steps:
 
-1. Download the deployment [archive](/deployment/deployment.zip) to your computer and decompress it.
+1. Download the deployment (deployment.zip) to your computer and decompress it.
 2. Upload the files contained within the archive to a S3 bucket of your choice
 3. In the AWS Console, navigate to Cloudformation and create a new stack
 4. Create the new stack using the *cloudformation.yaml* file provided
