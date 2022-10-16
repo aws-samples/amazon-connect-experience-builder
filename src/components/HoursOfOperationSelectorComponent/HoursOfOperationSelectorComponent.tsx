@@ -262,6 +262,7 @@ const HoursOfOperationSelectorComponent: FC<HoursOfOperationSelectorComponentPro
         selectedTuesdayFromHoursOption, selectedTuesdayFromMinutesOption, selectedTuesdayToHoursOption, selectedTuesdayToMinutesOption,
         selectedWednesdayFromHoursOption, selectedWednesdayFromMinutesOption, selectedWednesdayToHoursOption, selectedWednesdayToMinutesOption,
         selectedThursdayFromHoursOption, selectedThursdayFromMinutesOption, selectedThursdayToHoursOption, selectedThursdayToMinutesOption,
+        selectedFridayFromHoursOption, selectedFridayFromMinutesOption, selectedFridayToHoursOption, selectedFridayToMinutesOption,
         selectedSaturdayFromHoursOption, selectedSaturdayFromMinutesOption, selectedSaturdayToHoursOption, selectedSaturdayToMinutesOption,
         selectedSundayFromHoursOption, selectedSundayFromMinutesOption, selectedSundayToHoursOption, selectedSundayToMinutesOption]);
 
