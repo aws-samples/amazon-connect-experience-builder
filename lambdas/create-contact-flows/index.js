@@ -188,6 +188,9 @@ exports.handler = async (event) => {
 
                 dtmf1ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf1ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf1MessageBlock = dtmf1ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf1MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf1.param;
             }
         }
 
@@ -237,6 +240,9 @@ exports.handler = async (event) => {
                 dtmf2BlockSetQueueBlock.Parameters.QueueId = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf2ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf2ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf2MessageBlock = dtmf2ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf2MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf2.param;
             }
         }
 
@@ -288,6 +294,9 @@ exports.handler = async (event) => {
 
                 dtmf3ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf3ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf3MessageBlock = dtmf3ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf3MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf3.param;
             }
         }
 
@@ -340,6 +349,9 @@ exports.handler = async (event) => {
 
                 dtmf4ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf4ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf4MessageBlock = dtmf4ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf4MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf4.param;
             }
         }
 
@@ -391,6 +403,9 @@ exports.handler = async (event) => {
 
                 dtmf5ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf5ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf5MessageBlock = dtmf5ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf5MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf5.param;
             }
         }
 
@@ -442,6 +457,9 @@ exports.handler = async (event) => {
 
                 dtmf6ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf6ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf6MessageBlock = dtmf6ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf6MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf6.param;
             }
         }
 
@@ -491,6 +509,9 @@ exports.handler = async (event) => {
                 dtmf7BlockSetQueueBlock.Parameters.QueueId = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;;
                 dtmf7ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf7ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf7MessageBlock = dtmf7ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf7MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf7.param;
             }
         }
 
@@ -539,6 +560,9 @@ exports.handler = async (event) => {
                 dtmf8BlockSetQueueBlock.Parameters.QueueId = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;;
                 dtmf8ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf8ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf8MessageBlock = dtmf8ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf8MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf8.param;
             }
         }
 
@@ -587,6 +611,9 @@ exports.handler = async (event) => {
                 dtmf9BlockSetQueueBlock.Parameters.QueueId = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;;
                 dtmf9ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf9ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf9MessageBlock = dtmf9ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf9MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf9.param;
             }
         }
 
@@ -636,6 +663,9 @@ exports.handler = async (event) => {
                 dtmf0BlockSetQueueBlock.Parameters.QueueId = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf0ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.id = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).arn;
                 dtmf0ContactFlow.Metadata.ActionMetadata['d21dd8dd-adbd-42ab-8c38-b8e9fb4be790'].queue.text = queuesResource.find(queue => queue.name.startsWith(event.experience.title + "_default_")).name;
+
+                let dtmf0MessageBlock = dtmf0ContactFlow.Actions.find(action => action.Identifier == "28cbeeac-2830-411b-aa1b-59bffc702415");
+                dtmf0MessageBlock.Parameters.Text = event.experience.journey.inHours.journey.dtmf0.param;
             }
         }
     }
