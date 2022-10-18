@@ -413,9 +413,8 @@ Resources:
             StageName: dev
             DeploymentId: !Ref ApiDeployment
             MethodSettings:
-                - DataTraceEnabled: true
+                - DataTraceEnabled: false
                   HttpMethod: "*"
-                  LoggingLevel: "ERROR"
                   ResourcePath: "/*"
 
     ###### API RESOURCES AND METHODS ######
