@@ -1,31 +1,28 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
-const connect = new AWS.Connect();
-
+const { ConnectClient, ListQueuesCommand } = require('@aws-sdk/client-connect');
+const connect = new ConnectClient();
 
 /**
  * Re-implementation of Python rsplit
- **/
+ */
 String.prototype.rsplit = function(sep, maxsplit) {
-    var split = this.split(sep);
+    const split = this.split(sep);
     return maxsplit ? [split.slice(0, -maxsplit).join(sep)].concat(split.slice(-maxsplit)) : split;
 };
-// event.body will contain an object with an instanceId property and 
-// an array of resources that need to be created
 
-// we want to compare these to the existing resources in the intance
-
-// resources we need to care about:
-// - queues
+/**
+ * Lambda handler to list Connect resources
+ * @param {Object} event - API Gateway event containing instance ARN
+ * @returns {Object} HTTP response containing list of resources
+ */
 exports.handler = async (event) => {
-    
     console.log(event);
     
     const response = {
         headers: {
-            "Access-Control-Allow-Headers" : "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
@@ -33,11 +30,11 @@ exports.handler = async (event) => {
         statusCode: 200
     };
     
-    let body = {}
+    let body = {};
     
     /**
      * Request validation
-    **/
+     */
     if (event) {
         try {
             body = JSON.parse(event.body);
@@ -55,63 +52,60 @@ exports.handler = async (event) => {
             
         return response;
     }
-    /** **/
-    
-    // TODO implement
-    // We need to list queues
+
+    // List queues
     let queues = [];
     
     try {
         const instanceId = body.instanceArn.rsplit("/", 1)[1];
-        
-        
         await getQueuesInInstance(instanceId);
         
-        let queueData = queues.map(queue => { return {name: queue.Name, arn: queue.Arn, type: "queue" }});
+        const queueData = queues.map(queue => ({ 
+            name: queue.Name, 
+            arn: queue.Arn, 
+            type: "queue" 
+        }));
         
         response.body = JSON.stringify(queueData);
        
-    } catch (e) {
-        console.log(e);
-        
+    } catch (error) {
+        console.error('Error listing resources:', error);
         response.statusCode = 500;
-        response.body = "Error!";
+        response.body = JSON.stringify({ error: "Error listing resources" });
     }
-    
-    
     
     return response;
     
-    
-    
+    /**
+     * Gets all queues in a Connect instance
+     * @param {string} instance - Instance ID
+     * @param {string} nextToken - Token for pagination
+     * @returns {Promise} Promise that resolves when all queues are retrieved
+     */
     async function getQueuesInInstance(instance, nextToken) {
-        console.log('Getting queues in instance.')
-        var params = {
+        console.log('Getting queues in instance');
+        
+        const params = {
             InstanceId: instance,
-            /* required */
             MaxResults: 100,
-            QueueTypes: [
-                "STANDARD"
-            ],
+            QueueTypes: ["STANDARD"],
             NextToken: nextToken
         };
 
-        return new Promise((resolve, reject) => {
-            connect.listQueues(params, (err, data) => {
-                if (err) {
-                    console.log(err);
-                    reject(null);
-                }
-                else {
-                    queues = queues.concat(data.QueueSummaryList);
-                    if (data.NextToken) {
-                        getQueuesInInstance(instance, data.NextToken);
-                    }
-                    else {
-                        resolve(null);
-                    }
-                }
-            });
-        });
+        try {
+            const command = new ListQueuesCommand(params);
+            const data = await connect.send(command);
+            
+            queues = queues.concat(data.QueueSummaryList);
+            
+            if (data.NextToken) {
+                await getQueuesInInstance(instance, data.NextToken);
+            }
+            
+            return Promise.resolve();
+        } catch (error) {
+            console.error('Error getting queues:', error);
+            return Promise.reject(error);
+        }
     }
 };

@@ -1,16 +1,24 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
-const connect = new AWS.Connect();
+/**
+ * Lambda function to search for available phone numbers in Amazon Connect
+ */
 
+const { ConnectClient, SearchAvailablePhoneNumbersCommand } = require('@aws-sdk/client-connect');
+const connect = new ConnectClient();
+
+/**
+ * Lambda handler to search for available phone numbers
+ * @param {Object} event - API Gateway event
+ * @returns {Object} HTTP response containing available phone numbers
+ */
 exports.handler = async (event) => {
-    
     console.log(event);
     
     const response = {
         headers: {
-            "Access-Control-Allow-Headers" : "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
@@ -19,11 +27,11 @@ exports.handler = async (event) => {
         body: JSON.stringify('Hello from Lambda!'),
     };
     
-    let body = {}
+    let body = {};
     
     /**
      * Request validation
-    **/
+     */
     if (event) {
         try {
             body = JSON.parse(event.body);
@@ -41,24 +49,25 @@ exports.handler = async (event) => {
             
         return response;
     }
-    /** **/
     
     const params = {
-       "MaxResults": 5,
-       "PhoneNumberCountryCode": body.countryCode,
-       "PhoneNumberType": "DID",
-       "TargetArn": body.instanceArn
+        MaxResults: 5,
+        PhoneNumberCountryCode: body.countryCode,
+        PhoneNumberType: "DID",
+        TargetArn: body.instanceArn
     };
     
     try {
-        const results = await connect.searchAvailablePhoneNumbers(params).promise();
+        const command = new SearchAvailablePhoneNumbersCommand(params);
+        const results = await connect.send(command);
         
-        let data = results.AvailableNumbersList.map(item => item.PhoneNumber);
-        
+        const data = results.AvailableNumbersList.map(item => item.PhoneNumber);
         response.body = JSON.stringify(data);
 
-    } catch (e) {
-        console.log(e);
+    } catch (error) {
+        console.error('Error searching phone numbers:', error);
+        response.statusCode = 500;
+        response.body = JSON.stringify(error);
     }
     
     return response;

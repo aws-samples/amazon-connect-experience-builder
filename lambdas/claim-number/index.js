@@ -1,71 +1,84 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
-const connect = new AWS.Connect();
+/**
+ * Lambda function to claim and configure Amazon Connect phone numbers
+ * Handles phone number claiming and associates it with a contact flow
+ */
 
+const { Connect } = require('@aws-sdk/client-connect');
+const connect = new Connect();
 
 /**
- * Re-implementation of Python rsplit
- **/
+ * Helper function to split a string from the right side
+ * @param {string} sep - Separator to split on
+ * @param {number} maxsplit - Maximum number of splits
+ * @returns {Array} Array of split string parts
+ */
 String.prototype.rsplit = function(sep, maxsplit) {
-    var split = this.split(sep);
+    const split = this.split(sep);
     return maxsplit ? [split.slice(0, -maxsplit).join(sep)].concat(split.slice(-maxsplit)) : split;
 };
 
-
-
+/**
+ * Lambda handler to process phone number claiming for Amazon Connect
+ * @param {Object} event - Event containing experience and resource information
+ * @returns {Object} Modified event object with claimed phone number details
+ */
 exports.handler = async (event) => {
+    // Find required resources from the event
+    const phoneResource = event.resources.find(o => o.type == "phoneNumber");
+    const instanceArn = event.experience.instance;
+    const contactFlowArn = event.resources.find(o => 
+        (o.type == "contact_flow" && o.name.startsWith(event.experience.title + "_SEB - Setup"))
+    ).arn;
 
-    let phoneResource = event.resources.find(o => o.type == "phoneNumber");
-    let instanceArn = event.experience.instance;
-    let contactFlowArn = event.resources.find(o => (o.type == "contact_flow" && o.name.startsWith(event.experience.title + "_SEB - Setup"))).arn;
+    console.log('Contact Flow ARN:', contactFlowArn);
 
-    console.log(contactFlowArn);
-
-    let params = {
+    // Prepare parameters for claiming phone number
+    const claimParams = {
         PhoneNumber: phoneResource.name,
         TargetArn: instanceArn,
         PhoneNumberDescription: "Claimed by SMB"
-    }
+    };
 
     try {
-        let result = await connect.claimPhoneNumber(params).promise();
+        // Claim the phone number
+        const claimResult = await connect.claimPhoneNumber(claimParams);
+        phoneResource.arn = claimResult.PhoneNumberArn;
 
-        phoneResource.arn = result.PhoneNumberArn;
-
-        params = {
+        // Prepare parameters for contact flow association
+        const associateParams = {
             ContactFlowId: contactFlowArn.rsplit("/", 1)[1],
             InstanceId: instanceArn.rsplit("/", 1)[1],
             PhoneNumberId: phoneResource.arn.rsplit("/", 1)[1]
-        }
+        };
 
-        result = await associateContactFlow(params);
-    }
-    catch (e) {
-        console.log(e);
+        // Associate the phone number with the contact flow
+        await associateContactFlow(associateParams);
+    } catch (error) {
+        console.error('Error in phone number claiming process:', error);
     }
 
     return event;
-
-
-
-
-    async function associateContactFlow(params) {
-        return new Promise((res, rej) => {
-            setTimeout(async () => {
-                try {
-                    let result = await connect.associatePhoneNumberContactFlow(params).promise();
-
-                    res(true);
-                }
-                catch (e) {
-                    console.log(e);
-
-                    rej(e);
-                }
-
-            }, 6000)
-        })
-    }
 };
+
+/**
+ * Helper function to associate a phone number with a contact flow
+ * Includes a delay to ensure phone number claiming is completed
+ * @param {Object} params - Parameters for contact flow association
+ * @returns {Promise} Resolves when association is complete
+ */
+async function associateContactFlow(params) {
+    return new Promise((resolve, reject) => {
+        setTimeout(async () => {
+            try {
+                await connect.associatePhoneNumberContactFlow(params);
+                resolve(true);
+            } catch (error) {
+                console.error('Error associating contact flow:', error);
+                reject(error);
+            }
+        }, 6000); // 6 second delay to ensure phone number claim is processed
+    });
+}

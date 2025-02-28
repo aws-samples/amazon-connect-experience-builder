@@ -60,20 +60,6 @@ Resources:
                 IgnorePublicAcls: true
                 RestrictPublicBuckets: true
 
-    # Lambda layer
-    LambdaAWSLayer:
-        Type: AWS::Lambda::LayerVersion
-        Properties:
-            CompatibleArchitectures:
-                - x86_64
-            CompatibleRuntimes:
-                - nodejs14.x
-                - nodejs16.x
-            Content:
-                S3Bucket: !Ref S3BucketName
-                S3Key: "nodejs.zip"
-            LayerName: aws-2-1-1152-0-layer
-
     # Lambda role
     LambdaRole:
         Type: AWS::IAM::Role
@@ -156,7 +142,7 @@ Resources:
         Properties:
             Description: "Authenticate frontend users"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
             Code:
@@ -171,7 +157,7 @@ Resources:
         Properties:
             Description: "Authorize API calls"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
             Code:
@@ -197,32 +183,24 @@ Resources:
 
     LambdaListConnectInstances:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaAWSLayer
         Properties:
             Description: "List connect instances in region for account"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
-            Layers:
-                - !Ref LambdaAWSLayer
             Code:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "list-instances.zip"
 
     LambdaStartStateMachine:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaAWSLayer
         Properties:
             Description: "Initiate the orchestration"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
-            Layers:
-                - !Ref LambdaAWSLayer
             Code:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "start-state-machine.zip"
@@ -232,112 +210,84 @@ Resources:
 
     LambdaListPhoneNumbers:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaAWSLayer
         Properties:
             Description: "List phone numbers available to an instance"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 20
-            Layers:
-                - !Ref LambdaAWSLayer
             Code:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "list-phone-numbers.zip"
 
     LambdaGetInstanceResources:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaAWSLayer
         Properties:
             Description: "List relevant instance resources"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 20
-            Layers:
-                - !Ref LambdaAWSLayer
             Code:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "list-resources.zip"
 
     LambdaExperienceProgress:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaAWSLayer
         Properties:
             Description: "Retrieve the progress of a creation state machine"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 20
-            Layers:
-                - !Ref LambdaAWSLayer
             Code:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "progress.zip"
 
     LambdaCreateQueues:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaAWSLayer
         Properties:
             Description: "Create queues in the instance"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 60
-            Layers:
-                - !Ref LambdaAWSLayer
             Code:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "create-queues.zip"
 
     LambdaCreateHoursOfOperation:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaAWSLayer
         Properties:
             Description: "Create the hours of operation in instance"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 60
-            Layers:
-                - !Ref LambdaAWSLayer
             Code:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "create-hours-of-operation.zip"
 
     LambdaCreateContactFlows:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaAWSLayer
         Properties:
             Description: "Create the contact flows in instance"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 300
-            Layers:
-                - !Ref LambdaAWSLayer
             Code:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "create-contact-flows.zip"
 
     LambdaClaimNumber:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaAWSLayer
         Properties:
             Description: "Claim a number and associates it with a contact flow"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
-            Layers:
-                - !Ref LambdaAWSLayer
             Code:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "claim-number.zip"
@@ -1043,7 +993,7 @@ Resources:
             Handler: index.handler
             Role: !GetAtt CustomResourceLambdaExecutionRole.Arn
             Timeout: 360
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Code:
                 ZipFile: |
                     const AWS = require("aws-sdk");
@@ -1240,7 +1190,7 @@ Resources:
             Handler: index.handler
             Role: !GetAtt CustomResourceDDBLambdaExecutionRole.Arn
             Timeout: 10
-            Runtime: nodejs16.x
+            Runtime: nodejs22.x
             Environment:
                 Variables:
                     TABLE: !Ref UsersDDBTable

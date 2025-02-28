@@ -1,75 +1,99 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
-const connect = new AWS.Connect();
+/**
+ * Lambda function to create queues in Amazon Connect
+ * Creates and configures queues with specified hours of operation
+ */
 
+const { ConnectClient, CreateQueueCommand } = require('@aws-sdk/client-connect');
+const connect = new ConnectClient();
 
 /**
- * Re-implementation of Python rsplit
- **/
+ * Helper function to split a string from the right side
+ * @param {string} sep - Separator to split on
+ * @param {number} maxsplit - Maximum number of splits
+ * @returns {Array} Array of split string parts
+ */
 String.prototype.rsplit = function(sep, maxsplit) {
-    var split = this.split(sep);
+    const split = this.split(sep);
     return maxsplit ? [split.slice(0, -maxsplit).join(sep)].concat(split.slice(-maxsplit)) : split;
 };
 
-
+/**
+ * Lambda handler to process queue creation
+ * @param {Object} event - Event containing experience and resource configuration
+ * @returns {Object} Modified event object with created queue details
+ */
 exports.handler = async (event) => {
-    
     console.log(event);
 
+    // Add default queue if none exists
     event.resources.push({
         name: event.experience.title + "_default_" + Date.now(),
         type: "queue",
         arn: ""
     });
 
-    let queuesResource = event.resources.filter(o => o.type == "queue");
-    let hopResource = event.resources.find(o => o.type == "hop");
+    // Get queues and HOP resources
+    const queuesResource = event.resources.filter(o => o.type === "queue");
+    const hopResource = event.resources.find(o => o.type === "hop");
     const instanceId = event.experience.instance.rsplit("/", 1)[1];
 
-    for (let i = 0; i < queuesResource.length; i++) {
-        if (queuesResource[i].arn == '') {
-            var queueParams = {
+    // Create each queue
+    for (const queue of queuesResource) {
+        if (queue.arn === '') {
+            const queueParams = {
                 InstanceId: instanceId,
-                Name: queuesResource[i].name,
+                Name: queue.name,
                 HoursOfOperationId: hopResource.arn.rsplit("/", 1)[1]
-            }
+            };
             
             console.log(queueParams);
 
-            await createQueueAsync(queueParams, 1000);
+            try {
+                await createQueueAsync(queueParams, 1000);
+            } catch (error) {
+                console.error("Error creating queue:", error);
+                // Continue with next queue if one fails
+            }
         }
     }
     
     console.log(queuesResource);
     console.log(event);
 
-    const response = event;
-    
-    return response;
-    
-    
-    
-    async function createQueueAsync(param, timeout) {
-        return new Promise((res, rej) => {
-            setTimeout(() => {
-                console.log("Creating a queue");
-
-                let result = connect.createQueue(param, (err, data) => {
-                    if (err) {
-                        console.log(err);
-
-                        res(false);
-                    }
-                    else {
-                        queuesResource.find(q => q.name == param.Name).arn = data.QueueArn;
-                        
-                        res(data);
-                    }
-                });
-            }, timeout);
-        });
-    }
-    
+    return event;
 };
+
+/**
+ * Creates a queue with retry mechanism
+ * @param {Object} param - Queue parameters
+ * @param {number} timeout - Delay before creation in milliseconds
+ * @returns {Promise} Promise that resolves when queue is created
+ */
+async function createQueueAsync(param, timeout) {
+    return new Promise((resolve, reject) => {
+        setTimeout(async () => {
+            try {
+                console.log("Creating a queue");
+                const command = new CreateQueueCommand(param);
+                const data = await connect.send(command);
+                
+                if (data.QueueArn) {
+                    // Update queue resource with ARN
+                    const queue = queuesResource.find(q => q.name === param.Name);
+                    if (queue) {
+                        queue.arn = data.QueueArn;
+                    }
+                    resolve(data);
+                } else {
+                    reject(new Error("No QueueArn returned"));
+                }
+            } catch (error) {
+                console.error("Error in createQueueAsync:", error);
+                reject(error);
+            }
+        }, timeout);
+    });
+}
