@@ -42,11 +42,9 @@ Resources:
     FrontEndS3Bucket:
         Type: AWS::S3::Bucket
         Properties:
-            PublicAccessBlockConfiguration:
-                BlockPublicAcls: true
-                BlockPublicPolicy: true
-                IgnorePublicAcls: true
-                RestrictPublicBuckets: true
+            OwnershipControls:
+                Rules:
+                    - ObjectOwnership: ObjectWriter
             LoggingConfiguration:
                 DestinationBucketName: !Ref LoggingS3Bucket
                 LogFilePrefix: "frontend-logs/"
@@ -928,9 +926,6 @@ Resources:
         Type: "AWS::CloudFront::Distribution"
         Properties:
             DistributionConfig:
-                Logging:
-                    Bucket: !GetAtt LoggingS3Bucket.DomainName
-                    Prefix: "distribution/"
                 CustomErrorResponses:
                     - ErrorCode: 404
                       ResponseCode: 200
@@ -996,146 +991,133 @@ Resources:
             Runtime: nodejs22.x
             Code:
                 ZipFile: |
-                    const AWS = require("aws-sdk");
-                    var response = require('cfn-response');
-                    const s3 = new AWS.S3();
+                    const { S3Client, ListObjectsV2Command, CopyObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+                    const response = require("cfn-response");
 
-                    exports.handler = (event, context) => {
+                    // Initialize S3 client
+                    const s3Client = new S3Client();
 
-                        const request = event.RequestType;
+                    exports.handler = async (event, context) => {
+                    const request = event.RequestType;
 
+                    try {
                         switch (request) {
-                            case "Create":
-                                var params = {
-                                    Bucket: event.ResourceProperties.SourceBucket,
-                                    Prefix: "frontend"
-                                }
-                                getBucketContent(params).then((data) => {
+                        case "Create":
+                        case "Update":
+                            // Set parameters for listing objects in source bucket
+                            const sourceParams = {
+                            Bucket: event.ResourceProperties.SourceBucket,
+                            Prefix: "frontend",
+                            };
 
-                                        copyObjects(data).then((data) => {
-                                                console.log("Object copied successfully");
-                                                response.send(event, context, response.SUCCESS, {});
-                                            })
-                                            .catch((e) => {
-                                                console.log(e);
-                                                response.send(event, context, response.FAILED, {});
-                                            })
-                                    })
-                                    .catch(e => {
-                                        console.log(e);
-                                    })
+                            // Copy objects from source to destination bucket
+                            const listResult = await getBucketContent(sourceParams);
+                            await copyObjects(listResult, event);
+                            console.log("Objects copied successfully");
+                            await response.send(event, context, response.SUCCESS, {});
+                            break;
 
-                                break;
-                            case "Update":
-                                var params = {
-                                    Bucket: event.ResourceProperties.SourceBucket,
-                                    Prefix: "frontend"
-                                }
-                                getBucketContent(params).then((data) => {
+                        case "Delete":
+                            // Set parameters for listing objects in destination bucket
+                            const deleteParams = {
+                            Bucket: event.ResourceProperties.DestinationBucket,
+                            Prefix: "",
+                            };
 
-                                        copyObjects(data).then((data) => {
-                                                console.log("Object copied successfully");
-                                                response.send(event, context, response.SUCCESS, {});
-                                            })
-                                            .catch((e) => {
-                                                console.log(e);
-                                                response.send(event, context, response.FAILED, {});
-                                            })
-                                    })
-                                    .catch(e => {
-                                        console.log(e);
-                                        response.send(event, context, response.FAILED, {});
-                                    })
+                            // Delete all objects in the destination bucket
+                            const deleteList = await getBucketContent(deleteParams);
+                            await deleteObjects(deleteList, event);
+                            console.log("Objects deleted successfully");
+                            await response.send(event, context, response.SUCCESS, {});
+                            break;
 
-                                break;
-                            case "Delete":
-                                var params = {
-                                    Bucket: event.ResourceProperties.DestinationBucket,
-                                    Prefix: ""
-                                }
-                                getBucketContent(params).then((data) => {
-
-                                        deleteObjects(data).then((data) => {
-                                                console.log("Objects deleted successfully");
-                                                response.send(event, context, response.SUCCESS, {});
-                                            })
-                                            .catch((e) => {
-                                                console.log(e);
-                                                response.send(event, context, response.FAILED, {});
-                                            })
-                                    })
-                                    .catch(e => {
-                                        console.log(e);
-                                        response.send(event, context, response.FAILED, {});
-                                    })
-
-                                break;
-                            default:
-                                console.log("Unsupported operation.");
-                                response.send(event, context, response.FAILED, {});
-                                console.log("Sending FAILED from default");
+                        default:
+                            console.log("Unsupported operation.");
+                            await response.send(event, context, response.FAILED, {});
                         }
-
-                        function getBucketContent(params) {
-                            return new Promise(async (res, rej) => {
-                                try {
-                                    const list = await s3.listObjectsV2(params).promise();
-
-                                    console.log("1. Listed content");
-                                    res(list);
-                                }
-                                catch (e) {
-                                    rej(e);
-                                }
-
-                            });
-                        }
-
-                        function copyObjects(data) {
-                            return new Promise(async (res, rej) => {
-                                for (let index in data.Contents) {
-                                    var params = {
-                                        Bucket: event.ResourceProperties.DestinationBucket,
-                                        CopySource: event.ResourceProperties.SourceBucket + "/" + data.Contents[index].Key,
-                                        Key: data.Contents[index].Key.replace("frontend/", "")
-                                    }
-
-                                    try {
-                                        const res = await s3.copyObject(params).promise();
-                                    }
-                                    catch (e) {
-                                        rej(e);
-                                    }
-                                }
-                                console.log("1. Finished copying");
-
-                                res(true);
-                            });
-                        }
-
-                        function deleteObjects(data) {
-                            return new Promise(async (res, rej) => {
-                                for (let index in data.Contents) {
-                                    var params = {
-                                        Bucket: event.ResourceProperties.DestinationBucket,
-                                        Key: data.Contents[index].Key
-                                    }
-
-                                    try {
-                                        console.log(params);
-                                        const res = await s3.deleteObject(params).promise();
-                                        console.log(res)
-                                    }
-                                    catch (e) {
-                                        rej(e);
-                                    }
-                                }
-                                console.log("1. Finished deleting");
-
-                                res(true);
-                            });
-                        }
+                    } catch (error) {
+                        console.error("Error:", error);
+                        await response.send(event, context, response.FAILED, {});
+                    }
                     };
+
+                    /**
+                    * Lists objects in an S3 bucket
+                    * @param {Object} params - Parameters for listing objects
+                    * @returns {Promise} - Returns list of objects in the bucket
+                    */
+                    async function getBucketContent(params) {
+                    try {
+                        const command = new ListObjectsV2Command(params);
+                        const response = await s3Client.send(command);
+                        console.log("Successfully listed bucket contents");
+                        return response;
+                    } catch (error) {
+                        console.error("Error listing bucket contents:", error);
+                        throw error;
+                    }
+                    }
+
+                    /**
+                    * Copies objects from source to destination bucket
+                    * @param {Object} data - List of objects to copy
+                    * @param {Object} event - Lambda event object
+                    * @returns {Promise} - Returns true when copying is complete
+                    */
+                    async function copyObjects(data, event) {
+                    try {
+                        // Process each object in parallel using Promise.all
+                        await Promise.all(
+                        data.Contents.map(async (object) => {
+                            const params = {
+                            Bucket: event.ResourceProperties.DestinationBucket,
+                            CopySource: `${event.ResourceProperties.SourceBucket}/${object.Key}`,
+                            Key: object.Key.replace("frontend/", ""),
+                            };
+
+                            const command = new CopyObjectCommand(params);
+                            await s3Client.send(command);
+                        })
+                        );
+
+                        console.log("Successfully copied all objects");
+                        return true;
+                    } catch (error) {
+                        console.error("Error copying objects:", error);
+                        throw error;
+                    }
+                    }
+
+                    /**
+                    * Deletes objects from a bucket
+                    * @param {Object} data - List of objects to delete
+                    * @param {Object} event - Lambda event object
+                    * @returns {Promise} - Returns true when deletion is complete
+                    */
+                    async function deleteObjects(data, event) {
+                    try {
+                        // Process each deletion in parallel using Promise.all
+                        await Promise.all(
+                        data.Contents.map(async (object) => {
+                            const params = {
+                            Bucket: event.ResourceProperties.DestinationBucket,
+                            Key: object.Key,
+                            };
+
+                            const command = new DeleteObjectCommand(params);
+                            await s3Client.send(command);
+                            console.log(`Deleted object: ${object.Key}`);
+                        })
+                        );
+
+                        console.log("Successfully deleted all objects");
+                        return true;
+                    } catch (error) {
+                        console.error("Error deleting objects:", error);
+                        throw error;
+                    }
+                    }
+
 
     CustomResourceLambdaExecutionRole:
         Type: AWS::IAM::Role
@@ -1196,14 +1178,24 @@ Resources:
                     TABLE: !Ref UsersDDBTable
             Code:
                 ZipFile: |
-                    var response = require('cfn-response');
-                    const AWS = require('aws-sdk');
-                    const ddb = new AWS.DynamoDB();
+                    const { DynamoDBClient, PutItemCommand } = require('@aws-sdk/client-dynamodb');
+                    const response = require('cfn-response');
 
+                    // Initialize DynamoDB client
+                    const ddbClient = new DynamoDBClient();
+
+                    /**
+                    * Generates a hash code from a string
+                    * @returns {number} - Returns a positive integer hash
+                    */
                     String.prototype.hashCode = function() {
-                        var hash = 0,
-                            i, chr;
+                        var hash = 0;
+                        var i, chr;
+                        
+                        // Return hash of 0 for empty strings
                         if (this.length === 0) return hash;
+                        
+                        // Generate hash using a simple algorithm
                         for (i = 0; i < this.length; i++) {
                             chr = this.charCodeAt(i);
                             hash = ((hash << 5) - hash) + chr;
@@ -1212,32 +1204,53 @@ Resources:
                         return Math.abs(hash);
                     }
 
-                    exports.handler = (event, context) => {
-                        const email = event.ResourceProperties.EmailAddress;
-                        const apiKey = (email + Date.now()).hashCode();
+                    /**
+                    * Lambda handler for managing DynamoDB entries as part of a CloudFormation custom resource
+                    * @param {Object} event - CloudFormation custom resource event
+                    * @param {Object} context - Lambda context
+                    */
+                    exports.handler = async (event, context) => {
+                        try {
+                            // Extract email from the event and generate API key
+                            const email = event.ResourceProperties.EmailAddress;
+                            const apiKey = (email + Date.now()).hashCode();
+                            const request = event.RequestType;
 
-                        const request = event.RequestType;
+                            // Handle Create or Update requests
+                            if (request === "Create" || request === "Update") {
+                                // Prepare parameters for DynamoDB
+                                const params = {
+                                    TableName: process.env.TABLE,
+                                    Item: {
+                                        'email': { S: email },
+                                        'apiKey': { S: apiKey.toString() }
+                                    }
+                                };
 
-                        if (request == "Create" || request == "Update") {
-                            let params = {
-                                TableName: process.env.TABLE,
-                                Item: {
-                                    'email': { S: email },
-                                    'apiKey': { S: apiKey.toString() }
+                                try {
+                                    // Attempt to put item in DynamoDB
+                                    const command = new PutItemCommand(params);
+                                    await ddbClient.send(command);
+                                    
+                                    // Send success response with the generated API key
+                                    await response.send(event, context, response.SUCCESS, {
+                                        "ApiKey": apiKey.toString()
+                                    });
+                                } catch (error) {
+                                    console.error('Error putting item in DynamoDB:', error);
+                                    await response.send(event, context, response.FAILED, {});
                                 }
+                            } else {
+                                // For Delete requests, simply return success
+                                await response.send(event, context, response.SUCCESS, {});
                             }
-
-                            ddb.putItem(params, function(err, data) {
-                                if (err) {
-                                    response.send(event, context, response.FAILED, {});
-                                } else {
-                                    response.send(event, context, response.SUCCESS, { "ApiKey": apiKey.toString() });
-                                }
-                            });        
-                        } else {
-                            response.send(event, context, response.SUCCESS, {});
+                        } catch (error) {
+                            // Handle any unexpected errors
+                            console.error('Unexpected error:', error);
+                            await response.send(event, context, response.FAILED, {});
                         }
                     };
+
 
     CustomResourceDDBLambdaExecutionRole:
         Type: AWS::IAM::Role
