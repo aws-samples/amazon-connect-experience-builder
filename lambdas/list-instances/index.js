@@ -1,8 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
-const connect = new AWS.Connect();
+// Import the AWS SDK v3 Connect client
+const { ConnectClient, ListInstancesCommand } = require('@aws-sdk/client-connect');
+
+// Initialize the Connect client
+const connect = new ConnectClient();
 
 exports.handler = async (event) => {
     
@@ -17,12 +20,14 @@ exports.handler = async (event) => {
         }
     };
     
-    let params = {
+    const params = {
         // TODO implement listing instances for large numbers of instances
-    }
+    };
     
     try {
-        const results = await connect.listInstances(params).promise();
+        // Create and send the ListInstancesCommand
+        const command = new ListInstancesCommand(params);
+        const results = await connect.send(command);
         
         let data = results.InstanceSummaryList.map(item => { 
             let mapped = {};

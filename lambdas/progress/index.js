@@ -1,8 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require("aws-sdk");
-const stepfunctions = new AWS.StepFunctions();
+// Import the AWS SDK v3 StepFunctions client
+const { SFNClient, DescribeExecutionCommand } = require('@aws-sdk/client-sfn');
+
+// Initialize the StepFunctions client
+const stepfunctions = new SFNClient();
 
 exports.handler = async (event) => {
 
@@ -16,7 +19,9 @@ exports.handler = async (event) => {
     };
 
     try {
-        const result = await stepfunctions.describeExecution({ executionArn: JSON.parse(event.body).executionArn }).promise();
+        // Create and send the DescribeExecutionCommand
+        const command = new DescribeExecutionCommand({ executionArn: JSON.parse(event.body).executionArn });
+        const result = await stepfunctions.send(command);
         response.body = result.status;
         
         console.log(JSON.stringify(result));

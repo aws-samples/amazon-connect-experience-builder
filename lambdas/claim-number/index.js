@@ -1,9 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
-const connect = new AWS.Connect();
+// Import the AWS SDK v3 Connect client
+const { ConnectClient, ClaimPhoneNumberCommand, AssociatePhoneNumberContactFlowCommand } = require('@aws-sdk/client-connect');
 
+// Initialize the Connect client
+const connect = new ConnectClient();
 
 /**
  * Re-implementation of Python rsplit
@@ -12,8 +14,6 @@ String.prototype.rsplit = function(sep, maxsplit) {
     var split = this.split(sep);
     return maxsplit ? [split.slice(0, -maxsplit).join(sep)].concat(split.slice(-maxsplit)) : split;
 };
-
-
 
 exports.handler = async (event) => {
 
@@ -30,7 +30,9 @@ exports.handler = async (event) => {
     }
 
     try {
-        let result = await connect.claimPhoneNumber(params).promise();
+        // Create and send the ClaimPhoneNumberCommand
+        const claimCommand = new ClaimPhoneNumberCommand(params);
+        let result = await connect.send(claimCommand);
 
         phoneResource.arn = result.PhoneNumberArn;
 
@@ -48,23 +50,20 @@ exports.handler = async (event) => {
 
     return event;
 
-
-
-
     async function associateContactFlow(params) {
         return new Promise((res, rej) => {
             setTimeout(async () => {
                 try {
-                    let result = await connect.associatePhoneNumberContactFlow(params).promise();
+                    // Create and send the AssociatePhoneNumberContactFlowCommand
+                    const associateCommand = new AssociatePhoneNumberContactFlowCommand(params);
+                    let result = await connect.send(associateCommand);
 
                     res(true);
                 }
                 catch (e) {
                     console.log(e);
-
                     rej(e);
                 }
-
             }, 6000)
         })
     }

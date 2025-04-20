@@ -1,9 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require("aws-sdk");
-const connect = new AWS.Connect();
+// Import the AWS SDK v3 Connect client
+const { ConnectClient, CreateHoursOfOperationCommand } = require('@aws-sdk/client-connect');
 
+// Initialize the Connect client
+const connect = new ConnectClient();
 
 /**
  * Re-implementation of Python rsplit
@@ -137,28 +139,24 @@ exports.handler = async (event) => {
 
     return response;
 
-
-
     async function createHopAsync(param, timeout) {
         return new Promise((res, rej) => {
-            setTimeout(() => {
+            setTimeout(async () => {
                 console.log("Creating a hop");
 
-                let result = connect.createHoursOfOperation(param, (err, data) => {
-                    if (err) {
-                        console.log(err);
-
-                        hopResource.message = err.code;
-
-                        res(false);
-                    }
-                    else {
-                        console.log(data);
-                        hopResource.arn = data.HoursOfOperationArn;
-
-                        res(data);
-                    }
-                });
+                try {
+                    // Create and send the CreateHoursOfOperationCommand
+                    const command = new CreateHoursOfOperationCommand(param);
+                    const data = await connect.send(command);
+                    
+                    console.log(data);
+                    hopResource.arn = data.HoursOfOperationArn;
+                    res(data);
+                } catch (err) {
+                    console.log(err);
+                    hopResource.message = err.name;
+                    res(false);
+                }
             }, timeout);
         });
     }

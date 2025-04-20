@@ -67,8 +67,7 @@ Resources:
             CompatibleArchitectures:
                 - x86_64
             CompatibleRuntimes:
-                - nodejs14.x
-                - nodejs16.x
+                - nodejs18.x
             Content:
                 S3Bucket: !Ref S3BucketName
                 S3Key: "nodejs.zip"
@@ -156,7 +155,7 @@ Resources:
         Properties:
             Description: "Authenticate frontend users"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
             Code:
@@ -171,7 +170,7 @@ Resources:
         Properties:
             Description: "Authorize API calls"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
             Code:
@@ -202,7 +201,7 @@ Resources:
         Properties:
             Description: "List connect instances in region for account"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
             Layers:
@@ -218,7 +217,7 @@ Resources:
         Properties:
             Description: "Initiate the orchestration"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
             Layers:
@@ -237,7 +236,7 @@ Resources:
         Properties:
             Description: "List phone numbers available to an instance"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 20
             Layers:
@@ -253,7 +252,7 @@ Resources:
         Properties:
             Description: "List relevant instance resources"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 20
             Layers:
@@ -269,7 +268,7 @@ Resources:
         Properties:
             Description: "Retrieve the progress of a creation state machine"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 20
             Layers:
@@ -285,7 +284,7 @@ Resources:
         Properties:
             Description: "Create queues in the instance"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 60
             Layers:
@@ -301,7 +300,7 @@ Resources:
         Properties:
             Description: "Create the hours of operation in instance"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 60
             Layers:
@@ -317,7 +316,7 @@ Resources:
         Properties:
             Description: "Create the contact flows in instance"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 300
             Layers:
@@ -333,7 +332,7 @@ Resources:
         Properties:
             Description: "Claim a number and associates it with a contact flow"
             Handler: index.handler
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Role: !GetAtt LambdaRole.Arn
             Timeout: 12
             Layers:
@@ -1043,7 +1042,7 @@ Resources:
             Handler: index.handler
             Role: !GetAtt CustomResourceLambdaExecutionRole.Arn
             Timeout: 360
-            Runtime: nodejs16.x
+            Runtime: nodejs18.x
             Code:
                 ZipFile: |
                     const AWS = require("aws-sdk");
