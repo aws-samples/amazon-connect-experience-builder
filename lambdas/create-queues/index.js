@@ -1,9 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
-const connect = new AWS.Connect();
+// Import the AWS SDK v3 Connect client
+const { ConnectClient, CreateQueueCommand } = require('@aws-sdk/client-connect');
 
+// Initialize the Connect client
+const connect = new ConnectClient();
 
 /**
  * Re-implementation of Python rsplit
@@ -30,7 +32,7 @@ exports.handler = async (event) => {
 
     for (let i = 0; i < queuesResource.length; i++) {
         if (queuesResource[i].arn == '') {
-            var queueParams = {
+            const queueParams = {
                 InstanceId: instanceId,
                 Name: queuesResource[i].name,
                 HoursOfOperationId: hopResource.arn.rsplit("/", 1)[1]
@@ -49,27 +51,23 @@ exports.handler = async (event) => {
     
     return response;
     
-    
-    
     async function createQueueAsync(param, timeout) {
         return new Promise((res, rej) => {
-            setTimeout(() => {
+            setTimeout(async () => {
                 console.log("Creating a queue");
 
-                let result = connect.createQueue(param, (err, data) => {
-                    if (err) {
-                        console.log(err);
-
-                        res(false);
-                    }
-                    else {
-                        queuesResource.find(q => q.name == param.Name).arn = data.QueueArn;
-                        
-                        res(data);
-                    }
-                });
+                try {
+                    // Create and send the CreateQueueCommand
+                    const command = new CreateQueueCommand(param);
+                    const data = await connect.send(command);
+                    
+                    queuesResource.find(q => q.name == param.Name).arn = data.QueueArn;
+                    res(data);
+                } catch (err) {
+                    console.log(err);
+                    res(false);
+                }
             }, timeout);
         });
     }
-    
 };

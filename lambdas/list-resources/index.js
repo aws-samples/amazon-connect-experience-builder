@@ -1,9 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
-const connect = new AWS.Connect();
+// Import the AWS SDK v3 Connect client
+const { ConnectClient, ListQueuesCommand } = require('@aws-sdk/client-connect');
 
+// Initialize the Connect client
+const connect = new ConnectClient();
 
 /**
  * Re-implementation of Python rsplit
@@ -64,7 +66,6 @@ exports.handler = async (event) => {
     try {
         const instanceId = body.instanceArn.rsplit("/", 1)[1];
         
-        
         await getQueuesInInstance(instanceId);
         
         let queueData = queues.map(queue => { return {name: queue.Name, arn: queue.Arn, type: "queue" }});
@@ -78,15 +79,11 @@ exports.handler = async (event) => {
         response.body = "Error!";
     }
     
-    
-    
     return response;
-    
-    
     
     async function getQueuesInInstance(instance, nextToken) {
         console.log('Getting queues in instance.')
-        var params = {
+        const params = {
             InstanceId: instance,
             /* required */
             MaxResults: 100,
@@ -96,22 +93,19 @@ exports.handler = async (event) => {
             NextToken: nextToken
         };
 
-        return new Promise((resolve, reject) => {
-            connect.listQueues(params, (err, data) => {
-                if (err) {
-                    console.log(err);
-                    reject(null);
-                }
-                else {
-                    queues = queues.concat(data.QueueSummaryList);
-                    if (data.NextToken) {
-                        getQueuesInInstance(instance, data.NextToken);
-                    }
-                    else {
-                        resolve(null);
-                    }
-                }
-            });
-        });
+        try {
+            // Create and send the ListQueuesCommand
+            const command = new ListQueuesCommand(params);
+            const data = await connect.send(command);
+            
+            queues = queues.concat(data.QueueSummaryList);
+            if (data.NextToken) {
+                await getQueuesInInstance(instance, data.NextToken);
+            }
+            return;
+        } catch (err) {
+            console.log(err);
+            throw err;
+        }
     }
 };

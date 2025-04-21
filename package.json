@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@aws-sdk/client-connect": "^3.0.0",
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-sfn": "^3.0.0",
     "@awsui/components-react": "^3.0.513",
     "@awsui/global-styles": "^1.0.14",
     "@reduxjs/toolkit": "^1.8.2",

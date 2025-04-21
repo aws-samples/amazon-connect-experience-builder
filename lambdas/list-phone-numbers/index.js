@@ -1,8 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
-const connect = new AWS.Connect();
+// Import the AWS SDK v3 Connect client
+const { ConnectClient, SearchAvailablePhoneNumbersCommand } = require('@aws-sdk/client-connect');
+
+// Initialize the Connect client
+const connect = new ConnectClient();
 
 exports.handler = async (event) => {
     
@@ -51,7 +54,9 @@ exports.handler = async (event) => {
     };
     
     try {
-        const results = await connect.searchAvailablePhoneNumbers(params).promise();
+        // Create and send the SearchAvailablePhoneNumbersCommand
+        const command = new SearchAvailablePhoneNumbersCommand(params);
+        const results = await connect.send(command);
         
         let data = results.AvailableNumbersList.map(item => item.PhoneNumber);
         

@@ -1,9 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
-const AWS = require('aws-sdk');
+// Import the AWS SDK v3 Connect client
+const { ConnectClient, CreateContactFlowCommand } = require('@aws-sdk/client-connect');
 const fs = require('fs');
-const connect = new AWS.Connect();
+
+// Initialize the Connect client
+const connect = new ConnectClient();
 
 
 /**
@@ -832,25 +835,25 @@ exports.handler = async (event) => {
 
     async function createContactFlowAsync(param, timeout) {
         return new Promise((res, rej) => {
-            setTimeout(() => {
+            setTimeout(async () => {
                 console.log("Creating a contact flow: ", param.Name);
 
-                let result = connect.createContactFlow(param, (err, data) => {
-                    if (err) {
-                        console.log(err);
+                try {
+                    // Create and send the CreateContactFlowCommand
+                    const command = new CreateContactFlowCommand(param);
+                    const data = await connect.send(command);
+                    
+                    contactFlowsResource.push({
+                        name: param.Name,
+                        type: "contact_flow",
+                        arn: data.ContactFlowArn
+                    });
 
-                        res(false);
-                    }
-                    else {
-                        contactFlowsResource.push({
-                            name: param.Name,
-                            type: "contact_flow",
-                            arn: data.ContactFlowArn
-                        });
-
-                        res(data);
-                    }
-                });
+                    res(data);
+                } catch (err) {
+                    console.log(err);
+                    res(false);
+                }
 
             }, timeout);
         });
